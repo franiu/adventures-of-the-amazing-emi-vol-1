@@ -7,6 +7,7 @@ import {
   applyViewport,
   fitCanvas,
   pointerToVirtual,
+  TOUCH_POINTER_OFFSET_Y,
   type Viewport,
 } from '@/lib/game/engine/canvas'
 import { InputManager } from '@/lib/game/input/input'
@@ -180,7 +181,9 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
       }
       const rect = canvas.getBoundingClientRect()
       const p = pointerToVirtual(view, e.clientX, e.clientY, rect)
-      input.setPointer(true, p.x, p.y)
+      // Lift the steer target above the fingertip so touch doesn't hide the boat.
+      const offsetY = e.pointerType === 'touch' ? TOUCH_POINTER_OFFSET_Y : 0
+      input.setPointer(true, p.x, p.y - offsetY)
     },
     [],
   )

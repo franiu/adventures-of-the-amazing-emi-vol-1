@@ -78,7 +78,10 @@ newcomers; Indiana Jones makes it faster, denser, and less forgiving.
 
 ### Controls
 - **Touch:** drag / tap zones to steer; an action button where a stage needs one
-  (e.g. Stage 2 punch, Stage 3 jump).
+  (e.g. Stage 2 punch, Stage 3 jump). To keep the fingertip from hiding the
+  player, touch steering renders the character a fixed gap **above** the touch
+  point (`TOUCH_POINTER_OFFSET_Y` in `engine/canvas.ts`). This offset is applied
+  to touch input only — mouse/pen keep exact 1:1 tracking.
 - **Keyboard:** arrows / WASD to move, space for the action, `P` / `Esc` to pause.
 
 ### Pause / resume
