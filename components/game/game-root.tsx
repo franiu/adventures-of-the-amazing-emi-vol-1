@@ -7,15 +7,20 @@ import {
   recordAttempt,
   recordStageClear,
   resetStats,
+  setDifficulty,
+  setSoundOn,
   type GameStats,
 } from '@/lib/game/state/stats'
 import type { Screen, StageResult } from '@/lib/game/state/screens'
+import { getDifficulty, type Difficulty } from '@/lib/game/difficulty'
+import { sound } from '@/lib/game/audio/sound'
 import { INTRO_PANELS, OUTRO_PANELS } from '@/lib/game/cutscenes'
 import { MainMenu } from '@/components/game/screens/main-menu'
 import { Cutscene } from '@/components/game/screens/cutscene'
 import { StubScreen } from '@/components/game/screens/stub-screen'
 import { ResultsScreen } from '@/components/game/screens/results-screen'
 import { Stage1Boat } from '@/components/game/stages/stage1-boat'
+import { Stage2Dive } from '@/components/game/stages/stage2-dive'
 
 export function GameRoot() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -26,6 +31,11 @@ export function GameRoot() {
     setStats(loadStats())
   }, [])
 
+  // Keep the audio engine's mute state in sync with the saved preference.
+  useEffect(() => {
+    sound.setMuted(!stats.soundOn)
+  }, [stats.soundOn])
+
   const goStage1 = () => {
     setStats((s) => recordAttempt(s))
     setScreen('stage1')
@@ -34,6 +44,11 @@ export function GameRoot() {
   const onStage1Complete = (r: StageResult) => {
     setStats((s) => recordStageClear(s, 1, r.time, r.score))
     setScreen('transition1')
+  }
+
+  const onStage2Complete = (r: StageResult) => {
+    setStats((s) => recordStageClear(s, 2, r.time, r.score))
+    setScreen('transition2')
   }
 
   const clearStubStage = (stage: 2 | 3, next: Screen) => {
@@ -48,6 +63,17 @@ export function GameRoot() {
 
   const handleReset = () => setStats(resetStats())
 
+  const handleSetDifficulty = (d: Difficulty) =>
+    setStats((s) => setDifficulty(s, d))
+
+  const handleToggleSound = () => {
+    // Ensure the audio context is unlocked by this gesture when enabling.
+    sound.resume()
+    setStats((s) => setSoundOn(s, !s.soundOn))
+  }
+
+  const difficultyConfig = getDifficulty(stats.difficulty)
+
   return (
     <main className="game-surface no-callout bg-background text-foreground">
       {screen === 'menu' && (
@@ -56,6 +82,8 @@ export function GameRoot() {
           onNewGame={() => setScreen('intro')}
           onContinue={handleContinue}
           onReset={handleReset}
+          onSetDifficulty={handleSetDifficulty}
+          onToggleSound={handleToggleSound}
         />
       )}
 
@@ -65,6 +93,7 @@ export function GameRoot() {
 
       {screen === 'stage1' && (
         <Stage1Boat
+          difficulty={difficultyConfig}
           onComplete={onStage1Complete}
           onQuit={() => setScreen('menu')}
         />
@@ -85,16 +114,10 @@ export function GameRoot() {
       )}
 
       {screen === 'stage2' && (
-        <StubScreen
-          eyebrow="Stage 2"
-          title="The Deep Dive"
-          lines={[
-            'Escape sharks and mermaids, punch back the Kraken, and watch your oxygen!',
-            'This stage is coming in the next update — skip ahead for now.',
-          ]}
-          primaryLabel="Skip stage (preview)"
-          onPrimary={() => clearStubStage(2, 'transition2')}
-          onMenu={() => setScreen('menu')}
+        <Stage2Dive
+          difficulty={difficultyConfig}
+          onComplete={onStage2Complete}
+          onQuit={() => setScreen('menu')}
         />
       )}
 

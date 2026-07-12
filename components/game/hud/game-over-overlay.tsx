@@ -18,8 +18,10 @@ export function GameOverOverlay({
   onQuit,
 }: Props) {
   return (
-    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm">
-      <h2 className="font-display text-5xl font-bold text-primary">{title}</h2>
+    <div className="absolute inset-0 z-30 flex animate-in flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm fade-in duration-300">
+      <h2 className="font-display animate-in text-5xl font-bold text-primary zoom-in-50 duration-500">
+        {title}
+      </h2>
       <p className="max-w-xs text-pretty text-card-foreground">{message}</p>
       {typeof score === 'number' && (
         <p className="font-display text-xl font-bold text-secondary">

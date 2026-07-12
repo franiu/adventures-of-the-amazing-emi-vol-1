@@ -1,19 +1,36 @@
 'use client'
 
 import Image from 'next/image'
+import { Volume2, VolumeX } from 'lucide-react'
+import { sound } from '@/lib/game/audio/sound'
 import { GameButton } from '@/components/game/ui/game-button'
 import type { GameStats } from '@/lib/game/state/stats'
+import {
+  DIFFICULTIES,
+  DIFFICULTY_ORDER,
+  getDifficulty,
+  type Difficulty,
+} from '@/lib/game/difficulty'
 
 type Props = {
   stats: GameStats
   onNewGame: () => void
   onContinue: () => void
   onReset: () => void
+  onSetDifficulty: (d: Difficulty) => void
+  onToggleSound: () => void
 }
 
 const STAGE_NAMES = ['', 'Speedboat Dash', 'The Deep Dive', 'Atlantis'] as const
 
-export function MainMenu({ stats, onNewGame, onContinue, onReset }: Props) {
+export function MainMenu({
+  stats,
+  onNewGame,
+  onContinue,
+  onReset,
+  onSetDifficulty,
+  onToggleSound,
+}: Props) {
   const canContinue = stats.highestStage > 1 || stats.completed
 
   return (
@@ -27,6 +44,20 @@ export function MainMenu({ stats, onNewGame, onContinue, onReset }: Props) {
         className="object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-ocean-deep/40 via-ocean-deep/30 to-ocean-deep/90" />
+
+      {/* Sound toggle */}
+      <button
+        onClick={onToggleSound}
+        aria-pressed={stats.soundOn}
+        aria-label={stats.soundOn ? 'Mute sound' : 'Unmute sound'}
+        className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-ocean-deep/60 text-foreground backdrop-blur-sm transition-transform active:scale-90"
+      >
+        {stats.soundOn ? (
+          <Volume2 className="h-5 w-5" aria-hidden />
+        ) : (
+          <VolumeX className="h-5 w-5 text-muted-foreground" aria-hidden />
+        )}
+      </button>
 
       {/* Content */}
       <div className="relative z-10 flex h-full flex-col items-center justify-between px-6 py-8">
@@ -55,6 +86,48 @@ export function MainMenu({ stats, onNewGame, onContinue, onReset }: Props) {
         </div>
 
         <div className="flex w-full max-w-xs flex-col items-stretch gap-3">
+          <div className="rounded-2xl bg-card/70 p-3 backdrop-blur-sm">
+            <p className="mb-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-secondary">
+              Difficulty
+            </p>
+            <div
+              role="radiogroup"
+              aria-label="Difficulty"
+              className="grid grid-cols-3 gap-2"
+            >
+              {DIFFICULTY_ORDER.map((id) => {
+                const d = DIFFICULTIES[id]
+                const active = stats.difficulty === id
+                return (
+                  <button
+                    key={id}
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      sound.uiSelect()
+                      onSetDifficulty(id)
+                    }}
+                    className={`rounded-xl px-2 py-2 text-center transition-colors ${
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'bg-ocean-deep/40 text-muted-foreground'
+                    }`}
+                  >
+                    <span className="font-display block text-sm font-bold leading-tight">
+                      {d.label}
+                    </span>
+                    <span className="block text-[10px] uppercase tracking-wide">
+                      {d.tagline}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 min-h-8 text-center text-xs text-pretty text-card-foreground">
+              {getDifficulty(stats.difficulty).blurb}
+            </p>
+          </div>
+
           <GameButton onClick={onNewGame} className="w-full text-xl">
             {stats.completed ? 'Play Again' : 'New Adventure'}
           </GameButton>

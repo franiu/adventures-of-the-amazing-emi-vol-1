@@ -4,6 +4,13 @@ import { clamp } from './types'
 export const VIRTUAL_WIDTH = 720
 export const VIRTUAL_HEIGHT = 1280
 
+/**
+ * When steering with a finger, the character is rendered this many virtual
+ * units ABOVE the touch point so the fingertip never hides the player. Only
+ * applied to touch input — mouse/pen keep exact 1:1 tracking.
+ */
+export const TOUCH_POINTER_OFFSET_Y = 130
+
 export type Viewport = {
   /** scale factor from virtual units -> css pixels */
   scale: number

@@ -13,6 +13,14 @@ export const IMAGES = {
   obstacleRock: '/game/stage1/obstacle-rock.png',
   obstacleBuoy: '/game/stage1/obstacle-buoy.png',
   obstacleBarrel: '/game/stage1/obstacle-barrel.png',
+  // Stage 2 — deep dive
+  diverEmi: '/game/stage2/diver-emi.png',
+  shark: '/game/stage2/shark.png',
+  mermaid: '/game/stage2/mermaid.png',
+  krakenHead: '/game/stage2/kraken-head.png',
+  atlantisGate: '/game/stage2/atlantis-gate.png',
+  coral: '/game/stage2/coral.png',
+  deepSeaBg: '/game/stage2/deep-sea-bg.png',
 } as const
 
 export type ImageKey = keyof typeof IMAGES
@@ -24,3 +32,32 @@ export const STAGE1_ASSETS: ImageKey[] = [
   'obstacleBuoy',
   'obstacleBarrel',
 ]
+
+export const STAGE2_ASSETS: ImageKey[] = [
+  'diverEmi',
+  'shark',
+  'mermaid',
+  'krakenHead',
+  'atlantisGate',
+  'coral',
+  'deepSeaBg',
+]
+
+/**
+ * Sprites generated on a flat magenta (#FF00FF) background. The loader keys out
+ * the magenta into real transparency, since the image model bakes any
+ * "transparent" request in as opaque checkerboard pixels.
+ */
+export const CHROMA_KEY_ASSETS = new Set<ImageKey>([
+  'boatEmi',
+  'obstacleRock',
+  'obstacleBuoy',
+  'obstacleBarrel',
+  // Stage 2 sprites (deepSeaBg is a full-frame backdrop — do NOT key it)
+  'diverEmi',
+  'shark',
+  'mermaid',
+  'krakenHead',
+  'atlantisGate',
+  'coral',
+])

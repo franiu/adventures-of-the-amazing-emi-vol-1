@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Heart } from 'lucide-react'
 import { GameLoop } from '@/lib/game/engine/game-loop'
 import {
   applyViewport,
   fitCanvas,
   pointerToVirtual,
+  TOUCH_POINTER_OFFSET_Y,
   type Viewport,
 } from '@/lib/game/engine/canvas'
 import { InputManager } from '@/lib/game/input/input'
@@ -13,6 +15,8 @@ import { preloadImages } from '@/lib/game/assets/loader'
 import { STAGE1_ASSETS } from '@/lib/game/assets/manifest'
 import { BoatStage, type Stage1Hud } from '@/lib/game/stages/stage1'
 import type { StageResult } from '@/lib/game/state/screens'
+import type { DifficultyConfig } from '@/lib/game/difficulty'
+import { sound } from '@/lib/game/audio/sound'
 import { GameButton } from '@/components/game/ui/game-button'
 import { LoadingScreen } from '@/components/game/screens/loading-screen'
 import { PauseOverlay } from '@/components/game/hud/pause-overlay'
@@ -21,11 +25,12 @@ import { GameOverOverlay } from '@/components/game/hud/game-over-overlay'
 type Phase = 'loading' | 'ready' | 'playing' | 'paused' | 'won' | 'lost'
 
 type Props = {
+  difficulty: DifficultyConfig
   onComplete: (result: StageResult) => void
   onQuit: () => void
 }
 
-export function Stage1Boat({ onComplete, onQuit }: Props) {
+export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const simRef = useRef<BoatStage | null>(null)
   const inputRef = useRef<InputManager | null>(null)
@@ -40,6 +45,8 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
     progress: 0,
     status: 'playing',
     time: 0,
+    lives: 3,
+    maxLives: 3,
   })
   const phaseRef = useRef<Phase>('loading')
   phaseRef.current = phase
@@ -76,12 +83,10 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
   const endStage = useCallback(
     (status: 'won' | 'lost', sim: BoatStage) => {
       loopRef.current?.stop()
+      sound.stopMusic()
       const h = sim.getHud()
       setHud(h)
       setPhase(status)
-      if (status === 'won') {
-        // brief beat before advancing handled by the overlay button
-      }
     },
     [],
   )
@@ -93,19 +98,27 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    if (!simRef.current) simRef.current = new BoatStage()
+    if (!simRef.current) simRef.current = new BoatStage(difficulty)
     if (!inputRef.current) {
       inputRef.current = new InputManager()
       inputRef.current.attach()
     }
     const sim = simRef.current
     const input = inputRef.current
+    sim.setConfig(difficulty)
     sim.reset()
     viewRef.current = fitCanvas(canvas)
 
     const update = (dt: number) => {
       const snap = input.sample()
       sim.update(dt, snap)
+      // Turn gameplay events into sounds.
+      for (const ev of sim.drainEvents()) {
+        if (ev === 'dodge') sound.dodge()
+        else if (ev === 'crash') sound.crash()
+        else if (ev === 'finish') sound.finish()
+        else if (ev === 'respawn') sound.engineStart()
+      }
       if (sim.status !== 'playing') {
         endStage(sim.status, sim)
       }
@@ -128,14 +141,17 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
     loopRef.current?.stop()
     loopRef.current = new GameLoop(update, render)
     loopRef.current.start()
+    sound.engineStart()
+    sound.startMusic()
     setPhase('playing')
-  }, [endStage])
+  }, [endStage, difficulty])
 
   // ---- Auto-pause on tab blur ----
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden && phaseRef.current === 'playing') {
         loopRef.current?.pause()
+        sound.stopMusic()
         setPhase('paused')
       }
     }
@@ -148,6 +164,7 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
     return () => {
       loopRef.current?.stop()
       inputRef.current?.detach()
+      sound.stopMusic()
     }
   }, [])
 
@@ -164,7 +181,9 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
       }
       const rect = canvas.getBoundingClientRect()
       const p = pointerToVirtual(view, e.clientX, e.clientY, rect)
-      input.setPointer(true, p.x, p.y)
+      // Lift the steer target above the fingertip so touch doesn't hide the boat.
+      const offsetY = e.pointerType === 'touch' ? TOUCH_POINTER_OFFSET_Y : 0
+      input.setPointer(true, p.x, p.y - offsetY)
     },
     [],
   )
@@ -172,11 +191,13 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
   const pause = () => {
     if (phase !== 'playing') return
     loopRef.current?.pause()
+    sound.stopMusic()
     setPhase('paused')
   }
   const resume = () => {
     if (phase !== 'paused') return
     loopRef.current?.resume()
+    sound.startMusic()
     setPhase('playing')
   }
   const restart = () => startRun()
@@ -207,6 +228,19 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
             <p className="font-display text-2xl font-bold leading-none text-foreground">
               {hud.score}
             </p>
+            <div className="mt-1.5 flex gap-1" aria-label={`${hud.lives} lives left`}>
+              {Array.from({ length: hud.maxLives }).map((_, i) => (
+                <Heart
+                  key={i}
+                  className={
+                    i < hud.lives
+                      ? 'h-4 w-4 fill-primary text-primary'
+                      : 'h-4 w-4 fill-transparent text-muted-foreground/50'
+                  }
+                  aria-hidden
+                />
+              ))}
+            </div>
           </div>
 
           <div className="flex-1 px-3 pt-1">
@@ -259,10 +293,15 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
           <h2 className="font-display text-5xl font-bold text-primary">
             Speedboat Dash
           </h2>
+          <span className="font-display rounded-full bg-accent px-4 py-1 text-sm font-bold text-accent-foreground">
+            {difficulty.label} · {difficulty.tagline}
+          </span>
           <p className="max-w-xs text-pretty text-card-foreground">
             Race to the diving site! Drag anywhere to steer Emi&apos;s boat and
             dodge the rocks, buoys and barrels. They get faster and thicker the
-            closer you get.
+            closer you get. You have{' '}
+            <span className="font-bold text-primary">3 lives</span> — crash and
+            you&apos;ll bounce back for another try.
           </p>
           <GameButton onClick={startRun}>Start Engine!</GameButton>
         </div>
@@ -275,8 +314,8 @@ export function Stage1Boat({ onComplete, onQuit }: Props) {
 
       {/* Win */}
       {phase === 'won' && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm">
-          <h2 className="font-display text-5xl font-bold text-accent">
+        <div className="absolute inset-0 z-30 flex animate-in flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm fade-in duration-300">
+          <h2 className="font-display animate-in text-5xl font-bold text-accent zoom-in-50 duration-500">
             Diving Site!
           </h2>
           <p className="max-w-xs text-pretty text-card-foreground">
