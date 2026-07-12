@@ -3,6 +3,11 @@ import { clamp, lerp, circlesOverlap, randRange } from '@/lib/game/engine/types'
 import type { InputSnapshot } from '@/lib/game/input/input'
 import { getImage } from '@/lib/game/assets/loader'
 import type { ImageKey } from '@/lib/game/assets/manifest'
+import {
+  DIFFICULTIES,
+  DEFAULT_DIFFICULTY,
+  type DifficultyConfig,
+} from '@/lib/game/difficulty'
 
 type ObstacleKind = 'rock' | 'buoy' | 'barrel'
 
@@ -53,7 +58,44 @@ export class BoatStage {
   private bgOffset = 0
   private wakePhase = 0
 
+  private cfg: DifficultyConfig = DIFFICULTIES[DEFAULT_DIFFICULTY]
+
   status: Stage1Status = 'playing'
+
+  constructor(cfg?: DifficultyConfig) {
+    if (cfg) this.cfg = cfg
+  }
+
+  /** Select the difficulty applied on the next reset(). */
+  setConfig(cfg: DifficultyConfig) {
+    this.cfg = cfg
+  }
+
+  // ---- Difficulty-scaled tuning (base values = "Adventurer") ----
+  private get baseSpeed() {
+    return 430 * this.cfg.speedMul
+  }
+  private get maxSpeed() {
+    return 1150 * this.cfg.speedMul
+  }
+  private get speedRamp() {
+    return 20 * this.cfg.speedMul
+  }
+  private get startInterval() {
+    return 0.95 / this.cfg.spawnMul
+  }
+  private get minInterval() {
+    return 0.34 / this.cfg.spawnMul
+  }
+  private get intervalDecay() {
+    return 0.014 * this.cfg.spawnMul
+  }
+  private get maxDensity() {
+    return Math.max(1, 3 + this.cfg.densityBonus)
+  }
+  private get hitFactor() {
+    return 0.82 * this.cfg.hitScale
+  }
 
   reset() {
     this.boatX = W / 2
@@ -62,9 +104,9 @@ export class BoatStage {
     this.elapsed = 0
     this.distance = 0
     this.dodged = 0
-    this.speed = 430
+    this.speed = this.baseSpeed
     this.spawnTimer = 0
-    this.spawnInterval = 0.95
+    this.spawnInterval = this.startInterval
     this.bgOffset = 0
     this.wakePhase = 0
     this.status = 'playing'
@@ -89,8 +131,11 @@ export class BoatStage {
     this.elapsed += dt
 
     // Difficulty ramp: faster water, denser spawns.
-    this.speed = Math.min(1150, 430 + this.elapsed * 20)
-    this.spawnInterval = Math.max(0.34, 0.95 - this.elapsed * 0.014)
+    this.speed = Math.min(this.maxSpeed, this.baseSpeed + this.elapsed * this.speedRamp)
+    this.spawnInterval = Math.max(
+      this.minInterval,
+      this.startInterval - this.elapsed * this.intervalDecay,
+    )
     this.distance += this.speed * dt
     this.bgOffset = (this.bgOffset + this.speed * dt) % H
     this.wakePhase += dt * 12
@@ -122,7 +167,7 @@ export class BoatStage {
         this.dodged += 1
       }
       if (
-        circlesOverlap(this.boatX, boatHitY, BOAT_RADIUS, o.x, o.y, o.r * 0.82)
+        circlesOverlap(this.boatX, boatHitY, BOAT_RADIUS, o.x, o.y, o.r * this.hitFactor)
       ) {
         this.status = 'lost'
         return
@@ -136,8 +181,8 @@ export class BoatStage {
   }
 
   private spawnWave() {
-    // Number of obstacles per wave grows with time (1 -> 3).
-    const density = clamp(1 + Math.floor(this.elapsed / 14), 1, 3)
+    // Number of obstacles per wave grows with time, capped by difficulty.
+    const density = clamp(1 + Math.floor(this.elapsed / 14), 1, this.maxDensity)
     const usedX: number[] = []
     for (let i = 0; i < density; i++) {
       const kind = this.randomKind()

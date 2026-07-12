@@ -46,6 +46,7 @@ lib/game/
   state/                  → cookie persistence, stats, screen enum
   assets/                 → image manifest + loader (incl. chroma-key)
   input/                  → unified touch + keyboard input manager
+  difficulty.ts           → difficulty levels + global multipliers
   cutscenes.ts            → cutscene scripts (data, not components)
 public/game/              → generated art + user-provided character portraits
 spec/                     → game design + technical specification
@@ -73,8 +74,10 @@ spec/                     → game design + technical specification
 ## Persistence (cookies only)
 
 - Use `lib/game/state/cookies.ts` (typed JSON wrapper over `document.cookie`).
-- Game stats live in `lib/game/state/stats.ts`: highest stage reached, best
-  times/scores, attempts, wipeouts, completion flag.
+- Game stats live in `lib/game/state/stats.ts`: selected difficulty, highest
+  stage reached, best times/scores, attempts, wipeouts, completion flag.
+- Difficulty presets/multipliers live in `lib/game/difficulty.ts`; stages apply
+  them to their own base tuning (see `spec/architecture.md`).
 - **Never** introduce `localStorage`, a database, or any server storage — the
   cookie-only constraint is a product requirement.
 
@@ -101,8 +104,9 @@ the `.font-display` / `.game-surface` utilities rather than raw colors.
 
 ## Build status
 
-- Done: app shell, engine core, input, cookie stats, cutscene player, Stage 1
-  (Speedboat Dash) fully playable.
+- Done: app shell, engine core, input, cookie stats, cutscene player, three
+  difficulty levels (Rookie / Adventurer / Indiana Jones), Stage 1 (Speedboat
+  Dash) fully playable.
 - Stubbed (reachable "Coming soon" screens): Stage 2 (diving/Kraken), Stage 3
   (platformer + Connect-4), transitions, outro reunion.
 

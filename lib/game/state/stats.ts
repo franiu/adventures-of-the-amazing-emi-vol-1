@@ -1,4 +1,5 @@
 import { readCookie, writeCookie, deleteCookie } from './cookies'
+import { DEFAULT_DIFFICULTY, type Difficulty } from '@/lib/game/difficulty'
 
 const COOKIE_KEY = 'emi_save_v1'
 
@@ -18,6 +19,8 @@ export type GameStats = {
   highestStage: StageId
   /** true once the whole adventure is finished */
   completed: boolean
+  /** currently selected difficulty (persisted across sessions) */
+  difficulty: Difficulty
   attempts: number
   deaths: number
   stages: Record<StageId, StageRecord>
@@ -31,6 +34,7 @@ export function defaultStats(): GameStats {
   return {
     highestStage: 1,
     completed: false,
+    difficulty: DEFAULT_DIFFICULTY,
     attempts: 0,
     deaths: 0,
     stages: { 1: emptyStage(), 2: emptyStage(), 3: emptyStage() },
@@ -60,6 +64,12 @@ export function saveStats(stats: GameStats): void {
 export function resetStats(): GameStats {
   deleteCookie(COOKIE_KEY)
   return defaultStats()
+}
+
+export function setDifficulty(stats: GameStats, difficulty: Difficulty): GameStats {
+  const updated = { ...stats, difficulty }
+  saveStats(updated)
+  return updated
 }
 
 /** Records a successful stage clear, updating bests and unlocking the next stage. */

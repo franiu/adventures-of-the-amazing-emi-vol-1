@@ -26,12 +26,13 @@ lib/game/
   stages/                   → pure-TS simulation per stage (no React)
   state/
     cookies.ts              → typed JSON cookie wrapper
-    stats.ts                → game stats model + load/save
+    stats.ts                → game stats model + load/save (incl. difficulty)
     screens.ts             → screen enum
   input/input.ts            → unified touch + keyboard snapshot
   assets/
     manifest.ts             → image registry + chroma-key list
     loader.ts               → preload + magenta chroma-key
+  difficulty.ts             → difficulty levels + global multipliers
   cutscenes.ts              → cutscene scripts (data)
 ```
 
@@ -89,11 +90,27 @@ device-pixel-ratio, so logic never deals in raw device pixels.
 keyboard (arrows/WASD/space, pause keys) into one normalized snapshot that
 stages read each tick. It suppresses default touch scrolling/zoom on the canvas.
 
+## Difficulty
+
+`lib/game/difficulty.ts` defines three `DifficultyConfig` presets (`rookie`,
+`adventurer`, `indiana`) as **global multipliers**: `speedMul`, `spawnMul`,
+`densityBonus`, and `hitScale`. The selected difficulty is stored in the cookie
+save (`stats.difficulty`) and read by `game-root.tsx`, which passes the resolved
+config into the active stage.
+
+Each stage keeps its own base tuning (the "Adventurer" reference values) and
+applies the multipliers when computing derived values — e.g. `BoatStage` exposes
+getters like `baseSpeed = 430 * speedMul`, `startInterval = 0.95 / spawnMul`,
+`maxDensity = 3 + densityBonus`, `hitFactor = 0.82 * hitScale`. New stages should
+follow the same pattern so one difficulty choice scales the whole game
+consistently.
+
 ## Persistence
 
 `state/cookies.ts` is a small typed JSON wrapper over `document.cookie` (~1 year
 expiry, no dependency). `state/stats.ts` loads stats on boot and writes on stage
-complete / game over. **Cookies only — no localStorage or server storage.**
+complete / game over. It persists the selected **difficulty** alongside progress
+stats. **Cookies only — no localStorage or server storage.**
 
 ## Constraints
 

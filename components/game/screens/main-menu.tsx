@@ -3,17 +3,29 @@
 import Image from 'next/image'
 import { GameButton } from '@/components/game/ui/game-button'
 import type { GameStats } from '@/lib/game/state/stats'
+import {
+  DIFFICULTIES,
+  DIFFICULTY_ORDER,
+  type Difficulty,
+} from '@/lib/game/difficulty'
 
 type Props = {
   stats: GameStats
   onNewGame: () => void
   onContinue: () => void
   onReset: () => void
+  onSetDifficulty: (d: Difficulty) => void
 }
 
 const STAGE_NAMES = ['', 'Speedboat Dash', 'The Deep Dive', 'Atlantis'] as const
 
-export function MainMenu({ stats, onNewGame, onContinue, onReset }: Props) {
+export function MainMenu({
+  stats,
+  onNewGame,
+  onContinue,
+  onReset,
+  onSetDifficulty,
+}: Props) {
   const canContinue = stats.highestStage > 1 || stats.completed
 
   return (
@@ -55,6 +67,45 @@ export function MainMenu({ stats, onNewGame, onContinue, onReset }: Props) {
         </div>
 
         <div className="flex w-full max-w-xs flex-col items-stretch gap-3">
+          <div className="rounded-2xl bg-card/70 p-3 backdrop-blur-sm">
+            <p className="mb-2 text-center text-xs font-bold uppercase tracking-[0.2em] text-secondary">
+              Difficulty
+            </p>
+            <div
+              role="radiogroup"
+              aria-label="Difficulty"
+              className="grid grid-cols-3 gap-2"
+            >
+              {DIFFICULTY_ORDER.map((id) => {
+                const d = DIFFICULTIES[id]
+                const active = stats.difficulty === id
+                return (
+                  <button
+                    key={id}
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onSetDifficulty(id)}
+                    className={`rounded-xl px-2 py-2 text-center transition-colors ${
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'bg-ocean-deep/40 text-muted-foreground'
+                    }`}
+                  >
+                    <span className="font-display block text-sm font-bold leading-tight">
+                      {d.label}
+                    </span>
+                    <span className="block text-[10px] uppercase tracking-wide">
+                      {d.tagline}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 min-h-8 text-center text-xs text-pretty text-card-foreground">
+              {DIFFICULTIES[stats.difficulty].blurb}
+            </p>
+          </div>
+
           <GameButton onClick={onNewGame} className="w-full text-xl">
             {stats.completed ? 'Play Again' : 'New Adventure'}
           </GameButton>

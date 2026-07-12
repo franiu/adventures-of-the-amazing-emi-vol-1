@@ -7,9 +7,11 @@ import {
   recordAttempt,
   recordStageClear,
   resetStats,
+  setDifficulty,
   type GameStats,
 } from '@/lib/game/state/stats'
 import type { Screen, StageResult } from '@/lib/game/state/screens'
+import { getDifficulty, type Difficulty } from '@/lib/game/difficulty'
 import { INTRO_PANELS, OUTRO_PANELS } from '@/lib/game/cutscenes'
 import { MainMenu } from '@/components/game/screens/main-menu'
 import { Cutscene } from '@/components/game/screens/cutscene'
@@ -48,6 +50,11 @@ export function GameRoot() {
 
   const handleReset = () => setStats(resetStats())
 
+  const handleSetDifficulty = (d: Difficulty) =>
+    setStats((s) => setDifficulty(s, d))
+
+  const difficultyConfig = getDifficulty(stats.difficulty)
+
   return (
     <main className="game-surface no-callout bg-background text-foreground">
       {screen === 'menu' && (
@@ -56,6 +63,7 @@ export function GameRoot() {
           onNewGame={() => setScreen('intro')}
           onContinue={handleContinue}
           onReset={handleReset}
+          onSetDifficulty={handleSetDifficulty}
         />
       )}
 
@@ -65,6 +73,7 @@ export function GameRoot() {
 
       {screen === 'stage1' && (
         <Stage1Boat
+          difficulty={difficultyConfig}
           onComplete={onStage1Complete}
           onQuit={() => setScreen('menu')}
         />

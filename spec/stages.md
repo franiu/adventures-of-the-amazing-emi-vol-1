@@ -22,6 +22,13 @@ crashing.
 - Collision with any obstacle = wipeout (fail).
 - A progress bar shows distance to the diving site; reaching it clears the stage.
 
+**Difficulty multipliers** (base = "Adventurer"; see
+[`game-design.md`](./game-design.md)): `speedMul` scales base/max boat speed and
+ramp rate, `spawnMul` scales spawn interval (frequency), `densityBonus` shifts
+the per-wave obstacle cap (base 3 → Rookie 2, Indiana 4), and `hitScale` tweaks
+the collision radius. Concretely: Rookie ≈ slower water and ≤2 obstacles/wave;
+Indiana ≈ ~1.2× faster with up to 4/wave and tighter hitboxes.
+
 **HUD:** score/distance, progress bar, pause button.
 
 **Stats written:** best score/distance, attempts, wipeouts.

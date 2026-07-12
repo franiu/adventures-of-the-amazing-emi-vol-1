@@ -44,6 +44,31 @@ Boot → Main Menu → Intro cutscene
   failing sends the player to a game-over that can retry the current stage or
   quit to the menu.
 
+## Difficulty levels
+
+The player picks one of three difficulty levels on the main menu. The choice is
+**persisted in the cookie save** and applies to the whole adventure; it can be
+changed any time from the menu and is shown as a badge on each stage's ready
+screen.
+
+Difficulty is a set of **global multipliers** (see
+[`architecture.md`](./architecture.md) and `lib/game/difficulty.ts`). Each stage
+owns its own base tuning and applies these multipliers, so a single choice
+scales every stage consistently. The levels differ mainly in **gameplay speed**
+and **number of obstacles/hazards** (plus a small hitbox-forgiveness tweak):
+
+| Level | Tagline | Speed | Hazard frequency | Max obstacles/wave¹ | Hitbox |
+|-------|---------|-------|------------------|---------------------|--------|
+| **Rookie** | Relaxed | 0.8× | 0.78× | −1 | more forgiving |
+| **Adventurer** (default) | Balanced | 1.0× | 1.0× | baseline | normal |
+| **Indiana Jones** | Brutal | 1.22× | 1.3× | +1 | tightest |
+
+¹ `densityBonus` — added to each stage's own per-wave obstacle cap.
+
+"Adventurer" is the reference tuning (1.0× everywhere) — i.e. the originally
+implemented Stage 1 balance. Rookie makes the game slower and sparser for
+newcomers; Indiana Jones makes it faster, denser, and less forgiving.
+
 ## Cross-cutting rules
 
 ### Platform & UX
@@ -63,6 +88,7 @@ Boot → Main Menu → Intro cutscene
 
 ### Persistence (cookies only)
 All results and stats are stored in cookies — no server storage. Tracked:
+- selected difficulty level,
 - highest stage reached, per-stage best time/score,
 - Stage 2 oxygen efficiency,
 - total attempts, wipeouts/deaths, and the completion flag.
