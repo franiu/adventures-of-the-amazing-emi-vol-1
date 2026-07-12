@@ -25,6 +25,18 @@ type Obstacle = {
   scored: boolean
 }
 
+type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+  color: string
+  gravity: number
+}
+
 // `draw` = on-screen square size of the sprite frame; the actual collision
 // radius is derived per-obstacle from the sprite's measured opaque bounds.
 const KIND_TABLE: Record<ObstacleKind, { draw: number; img: ImageKey }> = {
@@ -45,6 +57,9 @@ export type Stage1Hud = {
 
 export type Stage1Status = 'playing' | 'won' | 'lost'
 
+/** Internal animation phase; gameplay is frozen while an outro plays. */
+type AnimPhase = 'none' | 'crash' | 'finish'
+
 const TARGET_DISTANCE = 26000
 // The boat sprite is a square frame: the hull sits in the upper portion with a
 // churning wake baked into the lower portion. We anchor drawing on the hull
@@ -53,6 +68,10 @@ const BOAT_DRAW = 172
 const BOAT_HULL_CY = 0.4 // hull center as a fraction down the sprite frame
 const BOAT_RADIUS = 34
 const MARGIN = 70
+
+// Outro animation durations (seconds).
+const CRASH_DURATION = 1.25
+const FINISH_DURATION = 1.5
 
 export class BoatStage {
   private boatX = W / 2
@@ -67,6 +86,19 @@ export class BoatStage {
   private spawnTimer = 0
   private spawnInterval = 0.95
   private bgOffset = 0
+
+  // ---- Outro animation state ----
+  private anim: AnimPhase = 'none'
+  private animT = 0
+  private particles: Particle[] = []
+  private shake = 0
+  private flash = 0
+  // Boat transform overrides driven by the outro animation.
+  private boatSpin = 0
+  private boatScale = 1
+  private boatDX = 0
+  private boatDY = 0
+  private boatAlpha = 1
 
   private cfg: DifficultyConfig = DIFFICULTIES[DEFAULT_DIFFICULTY]
 
@@ -118,6 +150,16 @@ export class BoatStage {
     this.spawnTimer = 0
     this.spawnInterval = this.startInterval
     this.bgOffset = 0
+    this.anim = 'none'
+    this.animT = 0
+    this.particles = []
+    this.shake = 0
+    this.flash = 0
+    this.boatSpin = 0
+    this.boatScale = 1
+    this.boatDX = 0
+    this.boatDY = 0
+    this.boatAlpha = 1
     this.status = 'playing'
   }
 
@@ -136,6 +178,12 @@ export class BoatStage {
 
   update(dt: number, input: InputSnapshot) {
     if (this.status !== 'playing') return
+
+    // While an outro animation plays, freeze gameplay and just advance it.
+    if (this.anim !== 'none') {
+      this.updateAnim(dt)
+      return
+    }
 
     this.elapsed += dt
 
@@ -177,14 +225,107 @@ export class BoatStage {
       if (
         circlesOverlap(this.boatX, boatHitY, BOAT_RADIUS, o.x, o.y, o.r * this.hitFactor)
       ) {
-        this.status = 'lost'
+        this.startCrash()
         return
       }
     }
     this.obstacles = this.obstacles.filter((o) => o.y < H + 120)
 
     if (this.distance >= TARGET_DISTANCE) {
-      this.status = 'won'
+      this.startFinish()
+    }
+  }
+
+  // ---- Outro animations -----------------------------------------------------
+
+  private startCrash() {
+    this.anim = 'crash'
+    this.animT = 0
+    this.shake = 26
+    this.flash = 0.85
+    // Burst of water droplets from the point of impact.
+    for (let i = 0; i < 34; i++) {
+      const a = randRange(0, Math.PI * 2)
+      const sp = randRange(120, 620)
+      this.particles.push({
+        x: this.boatX,
+        y: this.boatY,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 180,
+        life: 0,
+        maxLife: randRange(0.5, 1.1),
+        size: randRange(6, 18),
+        color: Math.random() < 0.5 ? '#e8f6ff' : '#8fd3ff',
+        gravity: 900,
+      })
+    }
+  }
+
+  private startFinish() {
+    this.anim = 'finish'
+    this.animT = 0
+    this.distance = TARGET_DISTANCE
+    this.flash = 0.35
+  }
+
+  private updateAnim(dt: number) {
+    this.animT += dt
+    this.shake = Math.max(0, this.shake - dt * 60)
+    this.flash = Math.max(0, this.flash - dt * 1.8)
+
+    // Keep the water scrolling so the scene stays alive.
+    this.bgOffset = (this.bgOffset + this.speed * dt) % H
+
+    // Advance existing particles.
+    for (const p of this.particles) {
+      p.life += dt
+      p.vy += p.gravity * dt
+      p.x += p.vx * dt
+      p.y += p.vy * dt
+    }
+    this.particles = this.particles.filter((p) => p.life < p.maxLife)
+
+    if (this.anim === 'crash') {
+      const t = clamp(this.animT / CRASH_DURATION, 0, 1)
+      // Spin out, sink and fade.
+      this.boatSpin = this.animT * 9
+      this.boatScale = 1 - 0.55 * t
+      this.boatDY = easeInCubic(t) * 70
+      this.boatDX = Math.sin(this.animT * 14) * 10 * (1 - t)
+      this.boatAlpha = 1 - easeInCubic(t)
+      // Obstacles keep drifting for a beat.
+      for (const o of this.obstacles) {
+        o.y += this.speed * 0.4 * dt
+        o.spin += o.spinSpeed * dt
+      }
+      if (this.animT >= CRASH_DURATION) {
+        this.status = 'lost'
+      }
+    } else if (this.anim === 'finish') {
+      const t = clamp(this.animT / FINISH_DURATION, 0, 1)
+      // Surge forward: boat rockets up off the top of the screen.
+      this.boatDY = -easeInCubic(t) * (H + 260)
+      this.boatScale = 1 + 0.12 * Math.sin(t * Math.PI)
+      this.boatSpin = 0
+      this.boatAlpha = 1
+      // Emit celebratory sparkles + a rising bubble trail from the wake.
+      if (Math.random() < 0.9) {
+        const sparkle = Math.random() < 0.55
+        this.particles.push({
+          x: this.boatX + randRange(-70, 70),
+          y: this.boatY + this.boatDY + randRange(-30, 90),
+          vx: randRange(-90, 90),
+          vy: randRange(-40, 60),
+          life: 0,
+          maxLife: randRange(0.5, 1.0),
+          size: sparkle ? randRange(5, 12) : randRange(4, 9),
+          color: sparkle ? '#ffd76b' : '#e8f6ff',
+          gravity: -60,
+        })
+      }
+      if (this.animT >= FINISH_DURATION) {
+        this.status = 'won'
+      }
     }
   }
 
@@ -230,6 +371,12 @@ export class BoatStage {
   }
 
   render(ctx: CanvasRenderingContext2D) {
+    // Screen shake offset (crash impact).
+    const sx = this.shake ? randRange(-this.shake, this.shake) : 0
+    const sy = this.shake ? randRange(-this.shake, this.shake) : 0
+    ctx.save()
+    ctx.translate(sx, sy)
+
     // Water background (two vertically-tiled copies scrolling down)
     const bg = getImage('seaBg')
     if (bg) {
@@ -260,16 +407,45 @@ export class BoatStage {
       ctx.restore()
     }
 
-    // Boat + wake
-    this.renderBoat(ctx)
+    // Boat (hidden once fully faded out after a crash)
+    if (this.boatAlpha > 0.02) this.renderBoat(ctx)
+
+    // Particles (splash droplets / sparkles) drawn above the boat.
+    this.renderParticles(ctx)
+
+    ctx.restore()
+
+    // Full-screen impact / finish flash (drawn without shake offset).
+    if (this.flash > 0.01) {
+      ctx.save()
+      ctx.globalAlpha = this.flash
+      ctx.fillStyle = this.anim === 'finish' ? '#ffe9a8' : '#ffffff'
+      ctx.fillRect(0, 0, W, H)
+      ctx.restore()
+    }
+  }
+
+  private renderParticles(ctx: CanvasRenderingContext2D) {
+    for (const p of this.particles) {
+      const a = clamp(1 - p.life / p.maxLife, 0, 1)
+      ctx.save()
+      ctx.globalAlpha = a
+      ctx.fillStyle = p.color
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.size * (0.6 + 0.4 * a), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
   }
 
   private renderBoat(ctx: CanvasRenderingContext2D) {
     const img = getImage('boatEmi')
     ctx.save()
+    ctx.globalAlpha = this.boatAlpha
     // Pivot on the hull center so tilt rotates the boat, not the wake tip.
-    ctx.translate(this.boatX, this.boatY)
-    ctx.rotate(this.tilt)
+    ctx.translate(this.boatX + this.boatDX, this.boatY + this.boatDY)
+    ctx.rotate(this.tilt + this.boatSpin)
+    ctx.scale(this.boatScale, this.boatScale)
     if (img) {
       // The wake is baked into the lower part of the sprite; anchor on the hull.
       ctx.drawImage(
@@ -291,4 +467,8 @@ export class BoatStage {
     }
     ctx.restore()
   }
+}
+
+function easeInCubic(t: number) {
+  return t * t * t
 }

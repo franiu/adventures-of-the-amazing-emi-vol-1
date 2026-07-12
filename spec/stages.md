@@ -31,6 +31,19 @@ Indiana ≈ ~1.2× faster with up to 4/wave and tighter hitboxes.
 
 **HUD:** score/distance, progress bar, pause button.
 
+**Outro animations:** the result is not shown instantly — the sim plays a short
+in-canvas sequence first, then flips `status` (which reveals the overlay):
+- **Crash (~1.25s):** the boat spins out, sinks, and fades; a radial burst of
+  water-droplet particles erupts at the impact point with a screen shake and a
+  quick white flash. The "Splash!" overlay then animates in.
+- **Finish (~1.5s):** the boat surges forward and rockets off the top of the
+  screen trailing golden sparkles/bubbles with a warm flash, then the
+  "Diving Site!" overlay animates in.
+
+These are driven by an internal `AnimPhase` ('none' | 'crash' | 'finish') plus a
+lightweight particle list, screen-shake, and flash values, all reset on
+`reset()`. Overlays use `tw-animate-css` (`animate-in`, `zoom-in`, `fade-in`).
+
 **Stats written:** best score/distance, attempts, wipeouts.
 
 ---

@@ -281,8 +281,8 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
 
       {/* Win */}
       {phase === 'won' && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm">
-          <h2 className="font-display text-5xl font-bold text-accent">
+        <div className="absolute inset-0 z-30 flex animate-in flex-col items-center justify-center gap-4 bg-ocean-deep/85 px-8 text-center backdrop-blur-sm fade-in duration-300">
+          <h2 className="font-display animate-in text-5xl font-bold text-accent zoom-in-50 duration-500">
             Diving Site!
           </h2>
           <p className="max-w-xs text-pretty text-card-foreground">
