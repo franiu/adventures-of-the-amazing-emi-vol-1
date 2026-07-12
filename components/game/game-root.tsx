@@ -46,6 +46,11 @@ export function GameRoot() {
     setScreen('transition1')
   }
 
+  const onStage2Complete = (r: StageResult) => {
+    setStats((s) => recordStageClear(s, 2, r.time, r.score))
+    setScreen('transition2')
+  }
+
   const clearStubStage = (stage: 2 | 3, next: Screen) => {
     setStats((s) => recordStageClear(s, stage, 0, 0))
     setScreen(next)
@@ -109,16 +114,10 @@ export function GameRoot() {
       )}
 
       {screen === 'stage2' && (
-        <StubScreen
-          eyebrow="Stage 2"
-          title="The Deep Dive"
-          lines={[
-            'Escape sharks and mermaids, punch back the Kraken, and watch your oxygen!',
-            'This stage is coming in the next update — skip ahead for now.',
-          ]}
-          primaryLabel="Skip stage (preview)"
-          onPrimary={() => clearStubStage(2, 'transition2')}
-          onMenu={() => setScreen('menu')}
+        <Stage2Dive
+          difficulty={difficultyConfig}
+          onComplete={onStage2Complete}
+          onQuit={() => setScreen('menu')}
         />
       )}
 
