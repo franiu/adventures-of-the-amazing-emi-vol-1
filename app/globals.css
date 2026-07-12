@@ -140,20 +140,20 @@
   }
 }
 
-@layer utilities {
-  .font-display {
-    font-family: var(--font-display);
-  }
-  /* Full-screen, touch-first game surface */
-  .game-surface {
-    position: fixed;
-    inset: 0;
-    overflow: hidden;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .no-callout {
-    -webkit-touch-callout: none;
-  }
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+/* Full-screen, touch-first game surface */
+@utility game-surface {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@utility no-callout {
+  -webkit-touch-callout: none;
 }

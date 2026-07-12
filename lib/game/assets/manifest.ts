@@ -24,3 +24,15 @@ export const STAGE1_ASSETS: ImageKey[] = [
   'obstacleBuoy',
   'obstacleBarrel',
 ]
+
+/**
+ * Sprites generated on a flat magenta (#FF00FF) background. The loader keys out
+ * the magenta into real transparency, since the image model bakes any
+ * "transparent" request in as opaque checkerboard pixels.
+ */
+export const CHROMA_KEY_ASSETS = new Set<ImageKey>([
+  'boatEmi',
+  'obstacleRock',
+  'obstacleBuoy',
+  'obstacleBarrel',
+])
