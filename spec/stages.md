@@ -19,7 +19,11 @@ crashing.
 - Sea obstacles (rocks, buoys, barrels) spawn ahead and scroll down.
 - **Difficulty ramp:** obstacle speed *and* spawn density increase over time /
   distance, so the course accelerates and gets denser toward the end.
-- Collision with any obstacle = wipeout (fail).
+- **Lives:** the player starts with **3 lives** (`START_LIVES`). A collision
+  costs one life and plays the crash animation, then Emi **respawns** — the field
+  is cleared and she gets ~2.2s of invulnerability (`INVULN_TIME`), shown as a
+  blinking boat. Only a crash with no lives remaining ends the run (game over).
+  Score and distance are preserved across respawns.
 - A progress bar shows distance to the diving site; reaching it clears the stage.
 
 **Difficulty multipliers** (base = "Adventurer"; see
@@ -29,13 +33,16 @@ the per-wave obstacle cap (base 3 → Rookie 2, Indiana 4), and `hitScale` tweak
 the collision radius. Concretely: Rookie ≈ slower water and ≤2 obstacles/wave;
 Indiana ≈ ~1.2× faster with up to 4/wave and tighter hitboxes.
 
-**HUD:** score/distance, progress bar, pause button.
+**HUD:** score/distance, a row of heart icons for remaining lives, progress bar,
+pause button.
 
 **Outro animations:** the result is not shown instantly — the sim plays a short
-in-canvas sequence first, then flips `status` (which reveals the overlay):
+in-canvas sequence first, then either respawns (if lives remain) or flips
+`status` (which reveals the overlay):
 - **Crash (~1.25s):** the boat spins out, sinks, and fades; a radial burst of
   water-droplet particles erupts at the impact point with a screen shake and a
-  quick white flash. The "Splash!" overlay then animates in.
+  quick white flash. Then Emi respawns, or — if out of lives — the "Splash!"
+  overlay animates in.
 - **Finish (~1.5s):** the boat surges forward and rockets off the top of the
   screen trailing golden sparkles/bubbles with a warm flash, then the
   "Diving Site!" overlay animates in.

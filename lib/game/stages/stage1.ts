@@ -499,7 +499,10 @@ export class BoatStage {
   private renderBoat(ctx: CanvasRenderingContext2D) {
     const img = getImage('boatEmi')
     ctx.save()
-    ctx.globalAlpha = this.boatAlpha
+    // Blink while invulnerable (post-respawn grace) so the state reads clearly.
+    const blink =
+      this.invuln > 0 ? (Math.sin(this.invuln * 30) > 0 ? 0.35 : 1) : 1
+    ctx.globalAlpha = this.boatAlpha * blink
     // Pivot on the hull center so tilt rotates the boat, not the wake tip.
     ctx.translate(this.boatX + this.boatDX, this.boatY + this.boatDY)
     ctx.rotate(this.tilt + this.boatSpin)

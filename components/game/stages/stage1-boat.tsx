@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Heart } from 'lucide-react'
 import { GameLoop } from '@/lib/game/engine/game-loop'
 import {
   applyViewport,
@@ -43,6 +44,8 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
     progress: 0,
     status: 'playing',
     time: 0,
+    lives: 3,
+    maxLives: 3,
   })
   const phaseRef = useRef<Phase>('loading')
   phaseRef.current = phase
@@ -113,6 +116,7 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
         if (ev === 'dodge') sound.dodge()
         else if (ev === 'crash') sound.crash()
         else if (ev === 'finish') sound.finish()
+        else if (ev === 'respawn') sound.engineStart()
       }
       if (sim.status !== 'playing') {
         endStage(sim.status, sim)
@@ -221,6 +225,19 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
             <p className="font-display text-2xl font-bold leading-none text-foreground">
               {hud.score}
             </p>
+            <div className="mt-1.5 flex gap-1" aria-label={`${hud.lives} lives left`}>
+              {Array.from({ length: hud.maxLives }).map((_, i) => (
+                <Heart
+                  key={i}
+                  className={
+                    i < hud.lives
+                      ? 'h-4 w-4 fill-primary text-primary'
+                      : 'h-4 w-4 fill-transparent text-muted-foreground/50'
+                  }
+                  aria-hidden
+                />
+              ))}
+            </div>
           </div>
 
           <div className="flex-1 px-3 pt-1">
@@ -279,7 +296,9 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
           <p className="max-w-xs text-pretty text-card-foreground">
             Race to the diving site! Drag anywhere to steer Emi&apos;s boat and
             dodge the rocks, buoys and barrels. They get faster and thicker the
-            closer you get.
+            closer you get. You have{' '}
+            <span className="font-bold text-primary">3 lives</span> — crash and
+            you&apos;ll bounce back for another try.
           </p>
           <GameButton onClick={startRun}>Start Engine!</GameButton>
         </div>
