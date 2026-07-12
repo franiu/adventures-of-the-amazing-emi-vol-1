@@ -57,6 +57,9 @@ export type Stage1Hud = {
 
 export type Stage1Status = 'playing' | 'won' | 'lost'
 
+/** One-shot gameplay events the host can turn into sound/haptics. */
+export type Stage1Event = 'dodge' | 'crash' | 'finish'
+
 /** Internal animation phase; gameplay is frozen while an outro plays. */
 type AnimPhase = 'none' | 'crash' | 'finish'
 
@@ -99,6 +102,9 @@ export class BoatStage {
   private boatDX = 0
   private boatDY = 0
   private boatAlpha = 1
+
+  // One-shot events drained by the host each frame (for sound).
+  private events: Stage1Event[] = []
 
   private cfg: DifficultyConfig = DIFFICULTIES[DEFAULT_DIFFICULTY]
 
@@ -160,7 +166,16 @@ export class BoatStage {
     this.boatDX = 0
     this.boatDY = 0
     this.boatAlpha = 1
+    this.events = []
     this.status = 'playing'
+  }
+
+  /** Returns and clears the queued one-shot events since the last call. */
+  drainEvents(): Stage1Event[] {
+    if (this.events.length === 0) return []
+    const out = this.events
+    this.events = []
+    return out
   }
 
   private get score() {
@@ -221,6 +236,7 @@ export class BoatStage {
       if (!o.scored && o.y > this.boatY + 40) {
         o.scored = true
         this.dodged += 1
+        this.events.push('dodge')
       }
       if (
         circlesOverlap(this.boatX, boatHitY, BOAT_RADIUS, o.x, o.y, o.r * this.hitFactor)
@@ -243,6 +259,7 @@ export class BoatStage {
     this.animT = 0
     this.shake = 26
     this.flash = 0.85
+    this.events.push('crash')
     // Burst of water droplets from the point of impact.
     for (let i = 0; i < 34; i++) {
       const a = randRange(0, Math.PI * 2)
@@ -266,6 +283,7 @@ export class BoatStage {
     this.animT = 0
     this.distance = TARGET_DISTANCE
     this.flash = 0.35
+    this.events.push('finish')
   }
 
   private updateAnim(dt: number) {

@@ -14,6 +14,7 @@ import { STAGE1_ASSETS } from '@/lib/game/assets/manifest'
 import { BoatStage, type Stage1Hud } from '@/lib/game/stages/stage1'
 import type { StageResult } from '@/lib/game/state/screens'
 import type { DifficultyConfig } from '@/lib/game/difficulty'
+import { sound } from '@/lib/game/audio/sound'
 import { GameButton } from '@/components/game/ui/game-button'
 import { LoadingScreen } from '@/components/game/screens/loading-screen'
 import { PauseOverlay } from '@/components/game/hud/pause-overlay'
@@ -78,12 +79,10 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
   const endStage = useCallback(
     (status: 'won' | 'lost', sim: BoatStage) => {
       loopRef.current?.stop()
+      sound.stopMusic()
       const h = sim.getHud()
       setHud(h)
       setPhase(status)
-      if (status === 'won') {
-        // brief beat before advancing handled by the overlay button
-      }
     },
     [],
   )
@@ -109,6 +108,12 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
     const update = (dt: number) => {
       const snap = input.sample()
       sim.update(dt, snap)
+      // Turn gameplay events into sounds.
+      for (const ev of sim.drainEvents()) {
+        if (ev === 'dodge') sound.dodge()
+        else if (ev === 'crash') sound.crash()
+        else if (ev === 'finish') sound.finish()
+      }
       if (sim.status !== 'playing') {
         endStage(sim.status, sim)
       }
@@ -131,6 +136,8 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
     loopRef.current?.stop()
     loopRef.current = new GameLoop(update, render)
     loopRef.current.start()
+    sound.engineStart()
+    sound.startMusic()
     setPhase('playing')
   }, [endStage, difficulty])
 
@@ -139,6 +146,7 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
     const onVisibility = () => {
       if (document.hidden && phaseRef.current === 'playing') {
         loopRef.current?.pause()
+        sound.stopMusic()
         setPhase('paused')
       }
     }
@@ -151,6 +159,7 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
     return () => {
       loopRef.current?.stop()
       inputRef.current?.detach()
+      sound.stopMusic()
     }
   }, [])
 
@@ -175,11 +184,13 @@ export function Stage1Boat({ difficulty, onComplete, onQuit }: Props) {
   const pause = () => {
     if (phase !== 'playing') return
     loopRef.current?.pause()
+    sound.stopMusic()
     setPhase('paused')
   }
   const resume = () => {
     if (phase !== 'paused') return
     loopRef.current?.resume()
+    sound.startMusic()
     setPhase('playing')
   }
   const restart = () => startRun()

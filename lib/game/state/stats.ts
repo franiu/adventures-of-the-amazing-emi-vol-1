@@ -21,6 +21,8 @@ export type GameStats = {
   completed: boolean
   /** currently selected difficulty (persisted across sessions) */
   difficulty: Difficulty
+  /** whether game audio is enabled (persisted across sessions) */
+  soundOn: boolean
   attempts: number
   deaths: number
   stages: Record<StageId, StageRecord>
@@ -35,6 +37,7 @@ export function defaultStats(): GameStats {
     highestStage: 1,
     completed: false,
     difficulty: DEFAULT_DIFFICULTY,
+    soundOn: true,
     attempts: 0,
     deaths: 0,
     stages: { 1: emptyStage(), 2: emptyStage(), 3: emptyStage() },
@@ -68,6 +71,12 @@ export function resetStats(): GameStats {
 
 export function setDifficulty(stats: GameStats, difficulty: Difficulty): GameStats {
   const updated = { ...stats, difficulty }
+  saveStats(updated)
+  return updated
+}
+
+export function setSoundOn(stats: GameStats, soundOn: boolean): GameStats {
+  const updated = { ...stats, soundOn }
   saveStats(updated)
   return updated
 }

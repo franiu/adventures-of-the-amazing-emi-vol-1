@@ -73,6 +73,26 @@ sprites. Usage:
 Because they are portraits, moving in-game characters (running/diving/jumping
 Emi, etc.) are generated separately as sprites and chroma-keyed as above.
 
+## Audio (synthesized, no files)
+
+All sound is generated at runtime with the Web Audio API in
+`lib/game/audio/sound.ts` — there are **no audio asset files**. A single
+`sound` singleton lazily creates one `AudioContext` on the first user gesture
+(browser autoplay policy) and routes SFX and music through separate gain buses
+under a master gain used for muting.
+
+- **SFX:** `uiClick`, `uiSelect`, `engineStart`, `dodge`, `crash` (impact thud +
+  filtered-noise splash), `finish` (ascending arpeggio). Tones are short
+  enveloped oscillators; splashes use decaying filtered noise buffers.
+- **Music:** `startMusic`/`stopMusic` play a gentle looping pentatonic arpeggio
+  during Stage 1, faded in/out and tied to play/pause/blur/unmount.
+- **Mute:** persisted as `soundOn` in the save cookie (`stats.ts`). `game-root`
+  syncs it to `sound.setMuted()`; the main-menu speaker button toggles it.
+- **Sim stays pure:** `BoatStage` never imports audio — it pushes one-shot
+  `Stage1Event`s (`'dodge' | 'crash' | 'finish'`) that the component drains each
+  frame via `drainEvents()` and turns into sounds. Shared UI buttons
+  (`GameButton`) play a click automatically.
+
 ## Art direction
 
 Cartoonish, playful, colorful, bold outlines. Ocean-forward palette matching the

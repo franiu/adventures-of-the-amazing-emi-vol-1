@@ -8,10 +8,12 @@ import {
   recordStageClear,
   resetStats,
   setDifficulty,
+  setSoundOn,
   type GameStats,
 } from '@/lib/game/state/stats'
 import type { Screen, StageResult } from '@/lib/game/state/screens'
 import { getDifficulty, type Difficulty } from '@/lib/game/difficulty'
+import { sound } from '@/lib/game/audio/sound'
 import { INTRO_PANELS, OUTRO_PANELS } from '@/lib/game/cutscenes'
 import { MainMenu } from '@/components/game/screens/main-menu'
 import { Cutscene } from '@/components/game/screens/cutscene'
@@ -27,6 +29,11 @@ export function GameRoot() {
   useEffect(() => {
     setStats(loadStats())
   }, [])
+
+  // Keep the audio engine's mute state in sync with the saved preference.
+  useEffect(() => {
+    sound.setMuted(!stats.soundOn)
+  }, [stats.soundOn])
 
   const goStage1 = () => {
     setStats((s) => recordAttempt(s))
@@ -53,6 +60,12 @@ export function GameRoot() {
   const handleSetDifficulty = (d: Difficulty) =>
     setStats((s) => setDifficulty(s, d))
 
+  const handleToggleSound = () => {
+    // Ensure the audio context is unlocked by this gesture when enabling.
+    sound.resume()
+    setStats((s) => setSoundOn(s, !s.soundOn))
+  }
+
   const difficultyConfig = getDifficulty(stats.difficulty)
 
   return (
@@ -64,6 +77,7 @@ export function GameRoot() {
           onContinue={handleContinue}
           onReset={handleReset}
           onSetDifficulty={handleSetDifficulty}
+          onToggleSound={handleToggleSound}
         />
       )}
 

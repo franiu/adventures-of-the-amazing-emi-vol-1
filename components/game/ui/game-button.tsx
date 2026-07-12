@@ -2,6 +2,7 @@
 
 import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
+import { sound } from '@/lib/game/audio/sound'
 
 type Variant = 'primary' | 'secondary' | 'ghost'
 
@@ -22,6 +23,7 @@ export function GameButton({
   variant = 'primary',
   className,
   children,
+  onClick,
   ...props
 }: Props) {
   return (
@@ -34,6 +36,10 @@ export function GameButton({
         variants[variant],
         className,
       )}
+      onClick={(e) => {
+        sound.uiClick()
+        onClick?.(e)
+      }}
       {...props}
     >
       {children}
