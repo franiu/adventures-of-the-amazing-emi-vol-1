@@ -1,7 +1,7 @@
 import { VIRTUAL_WIDTH as W, VIRTUAL_HEIGHT as H } from '@/lib/game/engine/canvas'
 import { clamp, lerp, circlesOverlap, randRange } from '@/lib/game/engine/types'
 import type { InputSnapshot } from '@/lib/game/input/input'
-import { getImage } from '@/lib/game/assets/loader'
+import { getImage, getContentBounds } from '@/lib/game/assets/loader'
 import type { ImageKey } from '@/lib/game/assets/manifest'
 import {
   DIFFICULTIES,
@@ -14,7 +14,10 @@ type ObstacleKind = 'rock' | 'buoy' | 'barrel'
 type Obstacle = {
   x: number
   y: number
-  r: number
+  r: number // collision radius, fitted to the visible art
+  draw: number // on-screen square draw size
+  cx: number // content-center X as a fraction of the sprite (for recentering)
+  cy: number // content-center Y as a fraction of the sprite
   kind: ObstacleKind
   img: ImageKey
   spin: number
@@ -22,11 +25,16 @@ type Obstacle = {
   scored: boolean
 }
 
-const KIND_TABLE: Record<ObstacleKind, { r: number; img: ImageKey }> = {
-  rock: { r: 74, img: 'obstacleRock' },
-  buoy: { r: 56, img: 'obstacleBuoy' },
-  barrel: { r: 60, img: 'obstacleBarrel' },
+// `draw` = on-screen square size of the sprite frame; the actual collision
+// radius is derived per-obstacle from the sprite's measured opaque bounds.
+const KIND_TABLE: Record<ObstacleKind, { draw: number; img: ImageKey }> = {
+  rock: { draw: 175, img: 'obstacleRock' },
+  buoy: { draw: 130, img: 'obstacleBuoy' },
+  barrel: { draw: 140, img: 'obstacleBarrel' },
 }
+
+// Fallback opaque-bounds fraction if a sprite failed to load/measure.
+const DEFAULT_CONTENT = { cx: 0.5, cy: 0.5, hw: 0.42, hh: 0.42 }
 
 export type Stage1Hud = {
   score: number
@@ -38,9 +46,12 @@ export type Stage1Hud = {
 export type Stage1Status = 'playing' | 'won' | 'lost'
 
 const TARGET_DISTANCE = 26000
-const BOAT_W = 120
-const BOAT_H = 156
-const BOAT_RADIUS = 44
+// The boat sprite is a square frame: the hull sits in the upper portion with a
+// churning wake baked into the lower portion. We anchor drawing on the hull
+// center and keep the collision circle tight over the hull only (not the wake).
+const BOAT_DRAW = 172
+const BOAT_HULL_CY = 0.4 // hull center as a fraction down the sprite frame
+const BOAT_RADIUS = 34
 const MARGIN = 70
 
 export class BoatStage {
@@ -56,7 +67,6 @@ export class BoatStage {
   private spawnTimer = 0
   private spawnInterval = 0.95
   private bgOffset = 0
-  private wakePhase = 0
 
   private cfg: DifficultyConfig = DIFFICULTIES[DEFAULT_DIFFICULTY]
 
@@ -108,7 +118,6 @@ export class BoatStage {
     this.spawnTimer = 0
     this.spawnInterval = this.startInterval
     this.bgOffset = 0
-    this.wakePhase = 0
     this.status = 'playing'
   }
 
@@ -138,7 +147,6 @@ export class BoatStage {
     )
     this.distance += this.speed * dt
     this.bgOffset = (this.bgOffset + this.speed * dt) % H
-    this.wakePhase += dt * 12
 
     // Steering: pointer drag takes priority, else keyboard axis.
     const prevX = this.boatX
@@ -158,7 +166,7 @@ export class BoatStage {
     }
 
     // Move obstacles, cull, score dodges, detect collision
-    const boatHitY = this.boatY - 10
+    const boatHitY = this.boatY
     for (const o of this.obstacles) {
       o.y += this.speed * dt
       o.spin += o.spinSpeed * dt
@@ -187,6 +195,10 @@ export class BoatStage {
     for (let i = 0; i < density; i++) {
       const kind = this.randomKind()
       const meta = KIND_TABLE[kind]
+      const b = getContentBounds(meta.img) ?? DEFAULT_CONTENT
+      // Fit the collision circle to the visible art: average the opaque box's
+      // half-extents (as a fraction of the frame) times the on-screen size.
+      const r = ((b.hw + b.hh) / 2) * meta.draw
       let x = 0
       let tries = 0
       do {
@@ -196,8 +208,11 @@ export class BoatStage {
       usedX.push(x)
       this.obstacles.push({
         x,
-        y: -meta.r - randRange(0, 160),
-        r: meta.r,
+        y: -meta.draw - randRange(0, 160),
+        r,
+        draw: meta.draw,
+        cx: b.cx,
+        cy: b.cy,
         kind,
         img: meta.img,
         spin: randRange(0, Math.PI * 2),
@@ -233,8 +248,9 @@ export class BoatStage {
       ctx.translate(o.x, o.y)
       ctx.rotate(o.spin)
       if (img) {
-        const size = o.r * 2.3
-        ctx.drawImage(img, -size / 2, -size / 2, size, size)
+        // Recenter so the sprite's opaque content (not the padded frame) pivots
+        // and sits on the obstacle position.
+        ctx.drawImage(img, -o.cx * o.draw, -o.cy * o.draw, o.draw, o.draw)
       } else {
         ctx.fillStyle = '#6b7280'
         ctx.beginPath()
@@ -249,32 +265,27 @@ export class BoatStage {
   }
 
   private renderBoat(ctx: CanvasRenderingContext2D) {
-    // Foamy wake
-    ctx.save()
-    ctx.globalAlpha = 0.55
-    ctx.fillStyle = '#e8f6ff'
-    const wobble = Math.sin(this.wakePhase) * 8
-    ctx.beginPath()
-    ctx.moveTo(this.boatX - 26, this.boatY + 40)
-    ctx.lineTo(this.boatX - 60 + wobble, this.boatY + 210)
-    ctx.lineTo(this.boatX + 60 - wobble, this.boatY + 210)
-    ctx.lineTo(this.boatX + 26, this.boatY + 40)
-    ctx.closePath()
-    ctx.fill()
-    ctx.restore()
-
     const img = getImage('boatEmi')
     ctx.save()
+    // Pivot on the hull center so tilt rotates the boat, not the wake tip.
     ctx.translate(this.boatX, this.boatY)
     ctx.rotate(this.tilt)
     if (img) {
-      ctx.drawImage(img, -BOAT_W / 2, -BOAT_H / 2, BOAT_W, BOAT_H)
+      // The wake is baked into the lower part of the sprite; anchor on the hull.
+      ctx.drawImage(
+        img,
+        -BOAT_DRAW / 2,
+        -BOAT_HULL_CY * BOAT_DRAW,
+        BOAT_DRAW,
+        BOAT_DRAW,
+      )
     } else {
+      // Fallback: a simple bow-up triangle.
       ctx.fillStyle = '#e2513a'
       ctx.beginPath()
-      ctx.moveTo(0, -BOAT_H / 2)
-      ctx.lineTo(BOAT_W / 2, BOAT_H / 2)
-      ctx.lineTo(-BOAT_W / 2, BOAT_H / 2)
+      ctx.moveTo(0, -70)
+      ctx.lineTo(46, 60)
+      ctx.lineTo(-46, 60)
       ctx.closePath()
       ctx.fill()
     }

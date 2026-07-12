@@ -6,6 +6,7 @@ import type { GameStats } from '@/lib/game/state/stats'
 import {
   DIFFICULTIES,
   DIFFICULTY_ORDER,
+  getDifficulty,
   type Difficulty,
 } from '@/lib/game/difficulty'
 
@@ -102,7 +103,7 @@ export function MainMenu({
               })}
             </div>
             <p className="mt-2 min-h-8 text-center text-xs text-pretty text-card-foreground">
-              {DIFFICULTIES[stats.difficulty].blurb}
+              {getDifficulty(stats.difficulty).blurb}
             </p>
           </div>
 

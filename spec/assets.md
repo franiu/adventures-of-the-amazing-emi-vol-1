@@ -43,6 +43,19 @@ Workaround:
    sets magenta pixels transparent using a color-distance threshold, with an
    edge band that feathers alpha and lifts green to remove pink fringing. It
    returns a processed `<canvas>` (the renderer draws it like any image).
+4. **Measure opaque bounds.** During the same pixel scan, the loader records the
+   sprite's opaque bounding box (normalized center + half-extents) and exposes it
+   via `getContentBounds(key)`. Gameplay uses this to fit collision circles and
+   drawing to the *visible* art rather than the padded frame — sprites can have
+   large transparent margins, so this keeps hitboxes matching what players see.
+
+### Sprite orientation
+
+Action sprites are generated already facing their in-game travel direction so no
+runtime rotation is needed. The Stage 1 boat travels *up* the screen, so
+`boat-emi.png` is drawn from behind with the **bow pointing up** and the wake
+baked into the lower part of the frame (the code draws no separate wake). Avoid
+baked-in text/numbers in sprites — request "no text, no letters, no numbers".
 
 **Do not** chroma-key full-frame backgrounds (e.g. `sea-bg.png`); they are drawn
 edge-to-edge and have no background to remove.
