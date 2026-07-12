@@ -20,6 +20,7 @@ import { Cutscene } from '@/components/game/screens/cutscene'
 import { StubScreen } from '@/components/game/screens/stub-screen'
 import { ResultsScreen } from '@/components/game/screens/results-screen'
 import { Stage1Boat } from '@/components/game/stages/stage1-boat'
+import { Stage2Dive } from '@/components/game/stages/stage2-dive'
 
 export function GameRoot() {
   const [screen, setScreen] = useState<Screen>('menu')
