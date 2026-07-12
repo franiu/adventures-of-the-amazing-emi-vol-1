@@ -53,12 +53,14 @@ export type Stage1Hud = {
   progress: number // 0..1 to the diving site
   status: Stage1Status
   time: number
+  lives: number
+  maxLives: number
 }
 
 export type Stage1Status = 'playing' | 'won' | 'lost'
 
 /** One-shot gameplay events the host can turn into sound/haptics. */
-export type Stage1Event = 'dodge' | 'crash' | 'finish'
+export type Stage1Event = 'dodge' | 'crash' | 'finish' | 'respawn'
 
 /** Internal animation phase; gameplay is frozen while an outro plays. */
 type AnimPhase = 'none' | 'crash' | 'finish'
@@ -75,6 +77,10 @@ const MARGIN = 70
 // Outro animation durations (seconds).
 const CRASH_DURATION = 1.25
 const FINISH_DURATION = 1.5
+
+// Lives & post-respawn grace period.
+const START_LIVES = 3
+const INVULN_TIME = 2.2
 
 export class BoatStage {
   private boatX = W / 2
@@ -105,6 +111,11 @@ export class BoatStage {
 
   // One-shot events drained by the host each frame (for sound).
   private events: Stage1Event[] = []
+
+  // ---- Lives ----
+  private lives = START_LIVES
+  private readonly maxLives = START_LIVES
+  private invuln = 0 // grace period (seconds) after a respawn
 
   private cfg: DifficultyConfig = DIFFICULTIES[DEFAULT_DIFFICULTY]
 
@@ -167,6 +178,8 @@ export class BoatStage {
     this.boatDY = 0
     this.boatAlpha = 1
     this.events = []
+    this.lives = this.maxLives
+    this.invuln = 0
     this.status = 'playing'
   }
 
@@ -188,6 +201,8 @@ export class BoatStage {
       progress: clamp(this.distance / TARGET_DISTANCE, 0, 1),
       status: this.status,
       time: this.elapsed,
+      lives: this.lives,
+      maxLives: this.maxLives,
     }
   }
 
@@ -201,6 +216,7 @@ export class BoatStage {
     }
 
     this.elapsed += dt
+    if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt)
 
     // Difficulty ramp: faster water, denser spawns.
     this.speed = Math.min(this.maxSpeed, this.baseSpeed + this.elapsed * this.speedRamp)
@@ -239,6 +255,7 @@ export class BoatStage {
         this.events.push('dodge')
       }
       if (
+        this.invuln <= 0 &&
         circlesOverlap(this.boatX, boatHitY, BOAT_RADIUS, o.x, o.y, o.r * this.hitFactor)
       ) {
         this.startCrash()
@@ -255,6 +272,7 @@ export class BoatStage {
   // ---- Outro animations -----------------------------------------------------
 
   private startCrash() {
+    this.lives = Math.max(0, this.lives - 1)
     this.anim = 'crash'
     this.animT = 0
     this.shake = 26
@@ -284,6 +302,26 @@ export class BoatStage {
     this.distance = TARGET_DISTANCE
     this.flash = 0.35
     this.events.push('finish')
+  }
+
+  /** Bring Emi back after a non-fatal crash: clear the field and grant grace. */
+  private respawn() {
+    this.anim = 'none'
+    this.animT = 0
+    this.obstacles = []
+    this.particles = []
+    this.spawnTimer = 0
+    this.shake = 0
+    this.flash = 0
+    this.boatX = W / 2
+    this.tilt = 0
+    this.boatSpin = 0
+    this.boatScale = 1
+    this.boatDX = 0
+    this.boatDY = 0
+    this.boatAlpha = 1
+    this.invuln = INVULN_TIME
+    this.events.push('respawn')
   }
 
   private updateAnim(dt: number) {
@@ -317,7 +355,9 @@ export class BoatStage {
         o.spin += o.spinSpeed * dt
       }
       if (this.animT >= CRASH_DURATION) {
-        this.status = 'lost'
+        // Out of lives = game over; otherwise respawn and keep going.
+        if (this.lives > 0) this.respawn()
+        else this.status = 'lost'
       }
     } else if (this.anim === 'finish') {
       const t = clamp(this.animT / FINISH_DURATION, 0, 1)
