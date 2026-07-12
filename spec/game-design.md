@@ -86,9 +86,16 @@ newcomers; Indiana Jones makes it faster, denser, and less forgiving.
 - The game **auto-pauses** when the tab is hidden or backgrounded.
 - Pausing freezes the simulation; resuming continues without a time jump.
 
+### Sound
+- Playful synthesized audio (UI clicks, engine, dodges, crash splash, finish
+  fanfare, and gentle music). See [`assets.md`](./assets.md#audio-synthesized-no-files).
+- A **mute toggle** on the main menu turns all audio on/off; the choice is
+  persisted in the cookie save.
+
 ### Persistence (cookies only)
 All results and stats are stored in cookies — no server storage. Tracked:
 - selected difficulty level,
+- sound on/off preference,
 - highest stage reached, per-stage best time/score,
 - Stage 2 oxygen efficiency,
 - total attempts, wipeouts/deaths, and the completion flag.
@@ -100,7 +107,7 @@ page reload.
 
 | Stage | Win | Lose |
 |-------|-----|------|
-| 1 — Speedboat Dash | Reach the diving site (distance goal) | Crash into an obstacle |
+| 1 — Speedboat Dash | Reach the diving site (distance goal) | Lose all 3 lives to obstacle crashes |
 | 2 — Deep Dive | Pass the Kraken and reach the Atlantis dock | Oxygen runs out or fatal hit |
 | 3 — Atlantis Run | Clear the platform run, then win Connect-4 vs the Queen | Fall/hit hazard, or lose Connect-4 |
 

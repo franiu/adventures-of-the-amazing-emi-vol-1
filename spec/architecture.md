@@ -31,7 +31,8 @@ lib/game/
   input/input.ts            → unified touch + keyboard snapshot
   assets/
     manifest.ts             → image registry + chroma-key list
-    loader.ts               → preload + magenta chroma-key
+    loader.ts               → preload + magenta chroma-key + opaque bounds
+  audio/sound.ts            → synthesized Web Audio SFX + music (no files)
   difficulty.ts             → difficulty levels + global multipliers
   cutscenes.ts              → cutscene scripts (data)
 ```
@@ -105,12 +106,23 @@ getters like `baseSpeed = 430 * speedMul`, `startInterval = 0.95 / spawnMul`,
 follow the same pattern so one difficulty choice scales the whole game
 consistently.
 
+## Audio
+
+`lib/game/audio/sound.ts` is a `sound` singleton over the Web Audio API — no
+audio files. It lazily creates one `AudioContext` on the first user gesture and
+routes SFX + a music loop through separate gain buses under a master gain used
+for muting. Stage logic never imports it: `BoatStage` pushes one-shot
+`Stage1Event`s that the React wrapper drains each frame and maps to sounds. Mute
+state comes from `stats.soundOn` and is applied via `sound.setMuted()`. Full
+sound inventory is in [`assets.md`](./assets.md#audio-synthesized-no-files).
+
 ## Persistence
 
 `state/cookies.ts` is a small typed JSON wrapper over `document.cookie` (~1 year
 expiry, no dependency). `state/stats.ts` loads stats on boot and writes on stage
-complete / game over. It persists the selected **difficulty** alongside progress
-stats. **Cookies only — no localStorage or server storage.**
+complete / game over. It persists the selected **difficulty** and **sound
+preference** alongside progress stats. **Cookies only — no localStorage or
+server storage.**
 
 ## Constraints
 

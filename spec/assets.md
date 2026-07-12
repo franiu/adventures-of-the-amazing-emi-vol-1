@@ -89,9 +89,10 @@ under a master gain used for muting.
 - **Mute:** persisted as `soundOn` in the save cookie (`stats.ts`). `game-root`
   syncs it to `sound.setMuted()`; the main-menu speaker button toggles it.
 - **Sim stays pure:** `BoatStage` never imports audio — it pushes one-shot
-  `Stage1Event`s (`'dodge' | 'crash' | 'finish'`) that the component drains each
-  frame via `drainEvents()` and turns into sounds. Shared UI buttons
-  (`GameButton`) play a click automatically.
+  `Stage1Event`s (`'dodge' | 'crash' | 'finish' | 'respawn'`) that the component
+  drains each frame via `drainEvents()` and turns into sounds (the `respawn`
+  event replays the engine sound when Emi comes back after a non-fatal crash).
+  Shared UI buttons (`GameButton`) play a click automatically.
 
 ## Art direction
 

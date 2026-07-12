@@ -45,6 +45,7 @@ lib/game/
   stages/                 → per-stage simulation logic (pure TS, no React)
   state/                  → cookie persistence, stats, screen enum
   assets/                 → image manifest + loader (incl. chroma-key)
+  audio/                  → synthesized Web Audio sound engine (no files)
   input/                  → unified touch + keyboard input manager
   difficulty.ts           → difficulty levels + global multipliers
   cutscenes.ts            → cutscene scripts (data, not components)
@@ -74,8 +75,9 @@ spec/                     → game design + technical specification
 ## Persistence (cookies only)
 
 - Use `lib/game/state/cookies.ts` (typed JSON wrapper over `document.cookie`).
-- Game stats live in `lib/game/state/stats.ts`: selected difficulty, highest
-  stage reached, best times/scores, attempts, wipeouts, completion flag.
+- Game stats live in `lib/game/state/stats.ts`: selected difficulty, sound
+  on/off preference, highest stage reached, best times/scores, attempts,
+  wipeouts, completion flag.
 - Difficulty presets/multipliers live in `lib/game/difficulty.ts`; stages apply
   them to their own base tuning (see `spec/architecture.md`).
 - **Never** introduce `localStorage`, a database, or any server storage — the
@@ -96,6 +98,15 @@ Full-frame backgrounds (e.g. `sea-bg.png`) are used as-is and must **not** be
 chroma-keyed. User-provided character portraits live in
 `public/game/characters/` and are used for cutscenes/HUD, not as moving sprites.
 
+## Audio — synthesized, no files
+
+All sound is generated at runtime with the Web Audio API in
+`lib/game/audio/sound.ts` (a `sound` singleton). There are **no audio files**.
+Stage logic stays audio-free: `BoatStage` emits one-shot `Stage1Event`s that the
+React wrapper drains each frame and turns into sounds. Mute is persisted as
+`soundOn` in the save cookie and toggled from the main-menu speaker button. See
+[`spec/assets.md`](./spec/assets.md) for the full sound list.
+
 ## Design tokens
 
 Ocean-themed palette + Fredoka/Nunito fonts are defined in `app/globals.css`.
@@ -105,8 +116,9 @@ the `.font-display` / `.game-surface` utilities rather than raw colors.
 ## Build status
 
 - Done: app shell, engine core, input, cookie stats, cutscene player, three
-  difficulty levels (Rookie / Adventurer / Indiana Jones), Stage 1 (Speedboat
-  Dash) fully playable.
+  difficulty levels (Rookie / Adventurer / Indiana Jones), synthesized audio
+  with a persisted mute toggle, and Stage 1 (Speedboat Dash) fully playable —
+  including a 3-lives system and crash/finish outro animations.
 - Stubbed (reachable "Coming soon" screens): Stage 2 (diving/Kraken), Stage 3
   (platformer + Connect-4), transitions, outro reunion.
 
